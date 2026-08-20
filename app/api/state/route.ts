@@ -54,7 +54,7 @@ export async function PUT(request:NextRequest) {
       SET data=jsonb_set(
             jsonb_set(COALESCE(data,'{}'::jsonb),'{catalog}',${JSON.stringify(body.catalog)}::jsonb,TRUE),
             '{days}',
-            COALESCE(data->'days','{}'::jsonb) || jsonb_build_object(${body.date},${JSON.stringify(body.day)}::jsonb),
+            COALESCE(data->'days','{}'::jsonb) || jsonb_build_object(${body.date}::text,${JSON.stringify(body.day)}::jsonb),
             TRUE
           ),
           version=version+1,
@@ -67,6 +67,7 @@ export async function PUT(request:NextRequest) {
     await sql`INSERT INTO seguimiento_audit (user_id,action,board_date) VALUES (${auth.user.id},'Actualizó el tablero compartido',${body.date})`;
     return NextResponse.json({ok:true,updatedAt:result[0].updated_at,updatedBy:auth.user.name,version:Number(result[0].version)});
   }catch(error){
+    console.error("No fue posible guardar el tablero compartido.",error);
     const missing=error instanceof Error&&error.message==="DATABASE_URL_NOT_CONFIGURED";
     return NextResponse.json({error:missing?"La base de datos aún no está conectada.":"No fue posible guardar los cambios."},{status:missing?503:500});
   }
