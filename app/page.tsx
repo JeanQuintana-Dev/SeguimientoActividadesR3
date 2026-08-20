@@ -44,6 +44,7 @@ export default function Home() {
   const [reloadToken,setReloadToken] = useState(0);
   const skipSave = useRef(false);
   const saving = useRef(false);
+  const dirty = useRef(false);
   const version = useRef(0);
 
   useEffect(()=>{
@@ -59,7 +60,7 @@ export default function Home() {
     if(!user||user.mustChangePassword) return;
     let active=true;
     const load = async () => {
-      if (saving.current) return;
+      if (saving.current||dirty.current) return;
       try {
         const response=await fetch(`/api/state?date=${encodeURIComponent(date)}`,{cache:"no-store"});
         if(response.status===401){setUser(null);return}
@@ -90,19 +91,21 @@ export default function Home() {
 
   useEffect(() => {
     if (!ready||!user||user.mustChangePassword) return;
-    if(skipSave.current){skipSave.current=false;return}
+    if(skipSave.current){skipSave.current=false;dirty.current=false;return}
+    dirty.current=true;
     setSaved(false);
     const timer = setTimeout(async () => {
       saving.current=true;
       try{
         const day:DayState={checked,completionDates,rows,notes};
         const response=await fetch("/api/state",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({catalog,date,day,version:version.current})});
-        if(response.status===409){setSyncError("Otra persona actualizó el tablero; recargando…");setReloadToken(value=>value+1);return}
+        if(response.status===409){dirty.current=false;setSyncError("Otra persona actualizó el tablero; recargando…");setReloadToken(value=>value+1);return}
         if(response.status===401){setUser(null);return}
         if(!response.ok) throw new Error("Error de sincronización");
         const data=await response.json();
         version.current=Number(data.version ?? version.current+1);
         setLastUpdate({by:data.updatedBy ?? user.name,at:data.updatedAt ?? new Date().toISOString()});
+        dirty.current=false;
         setSyncError("");
         setSaved(true);
       }catch{
