@@ -174,7 +174,7 @@ export async function createSession(userId: string) {
   const tokenHash = await sha256(token);
   await sql`
     INSERT INTO seguimiento_sessions (token_hash,user_id,expires_at)
-    VALUES (${tokenHash},${userId},NOW()+(${SESSION_DAYS} || ' days')::interval)
+    VALUES (${tokenHash},${userId},NOW()+INTERVAL '7 days')
   `;
   return token;
 }
