@@ -101,15 +101,15 @@ export default function Home() {
         const response=await fetch("/api/state",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({catalog,date,day,version:version.current})});
         if(response.status===409){dirty.current=false;setSyncError("Otra persona actualizó el tablero; recargando…");setReloadToken(value=>value+1);return}
         if(response.status===401){setUser(null);return}
-        if(!response.ok) throw new Error("Error de sincronización");
-        const data=await response.json();
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error||"Error de sincronización");
         version.current=Number(data.version ?? version.current+1);
         setLastUpdate({by:data.updatedBy ?? user.name,at:data.updatedAt ?? new Date().toISOString()});
         dirty.current=false;
         setSyncError("");
         setSaved(true);
-      }catch{
-        setSyncError("Cambios sin sincronizar");
+      }catch(error){
+        setSyncError(error instanceof Error?error.message:"Cambios sin sincronizar");
       }finally{
         saving.current=false;
       }
